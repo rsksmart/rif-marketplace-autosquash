@@ -1,9 +1,8 @@
+import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {WebhookPayload} from '@actions/github/lib/interfaces'
 import fs from 'fs'
 import yaml from 'js-yaml'
-
-import * as core from '@actions/core'
 import run from '../src/main'
 
 const mockInputs = {

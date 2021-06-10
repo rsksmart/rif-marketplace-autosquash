@@ -1,10 +1,8 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {PullRequest} from '@octokit/webhooks-types'
-import {processCommitPush} from './processCommitPush'
-import {processPullRequest} from './processPullRequest'
+import {autoSquash, getPullRequestBySha} from './utils'
 
-const ALLOWED_ACTIONS = ['push', 'opened', 'closed']
+const ALLOWED_ACTIONS = ['push', 'opened', 'edited', 'updated']
 
 async function run(): Promise<void> {
   try {
@@ -21,8 +19,6 @@ async function run(): Promise<void> {
       payload: {repository, action: payloadAction, pull_request}
     } = github.context
 
-    // core.error(`pull request: ${JSON.stringify(pull_request)}`)
-
     if (!repository)
       throw Error('Something is wrong. Repository does not seem to exist.')
 
@@ -31,7 +27,7 @@ async function run(): Promise<void> {
       name: repoName
     } = repository
 
-    const action = payloadAction ?? eventName // action not present on a re-run
+    const action = payloadAction ?? eventName // action not present on in push payload
     core.info(`action: ${action}`)
     if (!action) {
       throw Error(
@@ -41,25 +37,21 @@ async function run(): Promise<void> {
       throw Error(`Action "${action}" is not allowed.`)
     }
 
-    if (pull_request)
-      return await processPullRequest({
-        action,
-        login,
-        repoName,
-        branchesInput,
-        pull_request: pull_request as PullRequest,
-        octokit,
-        token
-      })
+    const resolvedPR =
+      pull_request ??
+      (await getPullRequestBySha(octokit, login, repoName, contextSha))
 
-    return await processCommitPush({
-      login,
-      repoName,
-      contextSha,
-      branchesInput,
-      octokit,
-      token
-    })
+    if (!resolvedPR) {
+      core.info(`There's no PR for this hotfix yet.`)
+      return
+    }
+    const {
+      commits: commitCount,
+      title: prTitle,
+      head: {ref: branchName}
+    } = resolvedPR
+
+    await autoSquash({commitCount, repoName, prTitle, branchName, token, login})
   } catch (error) {
     core.error(error)
     core.setFailed(error.message)

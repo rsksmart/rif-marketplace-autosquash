@@ -1,12 +1,9 @@
-name: 'Test action'
-description: 'Test action'
-author: 'Juraj Piar'
+name: 'Autosquash'
+description: 'Autosquash commits in PR.'
+author: 'Juraj Piar <juraj.piar@icloud.com>'
 inputs:
   github_token:
     description: Token for the GitHub API.
-    required: true
-  branches:
-    description: Branches for backporting
     required: true
 runs:
   using: 'node12'
